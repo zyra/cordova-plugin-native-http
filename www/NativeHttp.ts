@@ -17,7 +17,7 @@ function Cordova() {
       return {
           value: function(...args: any[]) {
               return new Promise<any>((resolve, reject) => {
-                  exec(resolve.bind(resolve), reject.bind(reject), SERVICE_NAME, methodName, args);
+                  exec(getHttpRequestHandler(resolve), getHttpRequestHandler(reject), SERVICE_NAME, methodName, args);
               });
           }
       };
