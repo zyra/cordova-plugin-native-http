@@ -9,6 +9,11 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 var cordova_1 = require("cordova");
+function getHttpRequestHandler(callback) {
+    return function (response) {
+        callback(new Response(response));
+    };
+}
 function Cordova() {
     return function (target, methodName, descriptor) {
         return {
@@ -25,6 +30,47 @@ function Cordova() {
     };
 }
 var SERVICE_NAME = 'NativeHttp';
+var Response = (function () {
+    function Response(_response) {
+        this._response = _response;
+    }
+    Object.defineProperty(Response.prototype, "status", {
+        get: function () {
+            return this._response.status;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Response.prototype, "headers", {
+        get: function () {
+            return this._response.headers;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Response.prototype, "body", {
+        get: function () {
+            return this._response.body;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Response.prototype, "error", {
+        get: function () {
+            return this._response.error;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Response.prototype.json = function () {
+        try {
+            this._response.body = JSON.parse(this._response.body);
+        }
+        catch (e) { }
+        return this;
+    };
+    return Response;
+}());
 var NativeHttp = (function () {
     function NativeHttp() {
         this._defaultOptions = {
@@ -60,4 +106,3 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], NativeHttp.prototype, "post", null);
 module.exports = new NativeHttp();
-//# sourceMappingURL=NativeHttp.js.map

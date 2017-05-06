@@ -6,6 +6,12 @@ interface RequestOptions {
     body?: any;
 }
 
+function getHttpRequestHandler(callback: Function) {
+    return (response: HttpResponse) => {
+        callback(new Response(response));
+    };
+}
+
 function Cordova() {
     return function(target: NativeHttp, methodName: string, descriptor: TypedPropertyDescriptor<any>): TypedPropertyDescriptor<any> {
       return {
@@ -19,6 +25,42 @@ function Cordova() {
 }
 
 const SERVICE_NAME: string = 'NativeHttp';
+
+interface HttpResponse {
+    status: number;
+    headers: any;
+    body: any;
+    error?: string;
+}
+
+class Response {
+
+    get status(): number {
+        return this._response.status;
+    }
+
+    get headers(): any {
+        return this._response.headers;
+    }
+
+    get body(): any {
+        return this._response.body;
+    }
+
+    get error(): string {
+        return this._response.error;
+    }
+
+    constructor(private _response: HttpResponse) {}
+
+    json(): Response {
+        try {
+            this._response.body = JSON.parse(this._response.body);
+        } catch (e) {}
+        return this;
+    }
+
+}
 
 class NativeHttp {
 
