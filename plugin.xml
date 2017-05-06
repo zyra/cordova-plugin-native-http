@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin id="cordova-plugin-native-http" version="0.1.0" xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        xmlns:android="http://schemas.android.com/apk/res/android">
+    <name>CordovaHttp</name>
+    <js-module name="NativeHttp" src="www/NativeHttp.js">
+        <clobbers target="cordova.plugins.NativeHttp"/>
+    </js-module>
+    <platform name="android">
+        <config-file parent="/*" target="res/xml/config.xml">
+            <feature name="NativeHttp">
+                <param name="android-package" value="ca.zyra.cordova.NativeHttp.NativeHttp"/>
+            </feature>
+        </config-file>
+        <config-file parent="/*" target="AndroidManifest.xml" />
+        <source-file src="src/android/NativeHttp.java" target-dir="src/ca/zyra/cordova/NativeHttp"/>
+        <framework src="com.loopj.android:android-async-http:1.4.9" />
+    </platform>
+</plugin>

@@ -1,0 +1,35 @@
+{
+  "name": "cordova-plugin-native-http",
+  "version": "0.1.0",
+  "description": "Native HTTP plugin for Cordova Apps",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc && tsc -w",
+    "test": ""
+  },
+  "cordova": {
+    "id": "cordova-plugin-native-http",
+    "platforms": [
+      "android"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zyra/cordova-plugin-native-http.git"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "author": "Ibby Hadeed <ibby@zyra.ca>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/zyra/cordova-plugin-native-http/issues"
+  },
+  "homepage": "https://github.com/zyra/cordova-plugin-native-http#readme",
+  "devDependencies": {
+    "@types/cordova": "0.0.34",
+    "@types/node": "^7.0.18",
+    "typescript": "^2.3.2"
+  }
+}
