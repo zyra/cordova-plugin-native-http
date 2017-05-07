@@ -11,7 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var cordova_1 = require("cordova");
 function getHttpRequestHandler(callback) {
     return function (response) {
-        callback(new Response(response));
+        callback(new HttpResponse(response));
     };
 }
 function Cordova() {
@@ -23,53 +23,32 @@ function Cordova() {
                     args[_i] = arguments[_i];
                 }
                 return new Promise(function (resolve, reject) {
-                    cordova_1.exec(resolve.bind(resolve), reject.bind(reject), SERVICE_NAME, methodName, args);
+                    cordova_1.exec(getHttpRequestHandler(resolve), getHttpRequestHandler(reject), SERVICE_NAME, methodName, args);
                 });
             }
         };
     };
 }
 var SERVICE_NAME = 'NativeHttp';
-var Response = (function () {
-    function Response(_response) {
-        this._response = _response;
+var HttpResponse = (function () {
+    function HttpResponse(res) {
+        if (typeof res === 'string') {
+            this.error = res;
+            return;
+        }
+        this.status = res.status || 0;
+        this.headers = res.headers || [];
+        !!res.body && (this.body = res.body);
+        !!res.error && (this.error = res.error);
     }
-    Object.defineProperty(Response.prototype, "status", {
-        get: function () {
-            return this._response.status;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Response.prototype, "headers", {
-        get: function () {
-            return this._response.headers;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Response.prototype, "body", {
-        get: function () {
-            return this._response.body;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Response.prototype, "error", {
-        get: function () {
-            return this._response.error;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Response.prototype.json = function () {
+    HttpResponse.prototype.json = function () {
         try {
-            this._response.body = JSON.parse(this._response.body);
+            this.body = JSON.parse(this.body);
         }
         catch (e) { }
         return this;
     };
-    return Response;
+    return HttpResponse;
 }());
 var NativeHttp = (function () {
     function NativeHttp() {

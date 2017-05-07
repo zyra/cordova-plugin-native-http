@@ -1,6 +1,7 @@
 package ca.zyra.cordova.NativeHttp;
 
 import android.content.Context;
+import android.util.Log;
 
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
@@ -13,7 +14,12 @@ import org.json.JSONObject;
 
 import com.loopj.android.http.*;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -92,7 +98,7 @@ public class NativeHttp extends CordovaPlugin {
 
             final Header[] __headers = _headers.toArray(new Header[_headers.size()]);
 
-            client.get(this.context, path, __headers, _params, getJSONResponseHandler(callbackContext));
+            client.get(this.context, path, __headers, _params, getRequestHandler(callbackContext));
 
         } catch (Exception e) {
             callbackContext.error(e.getLocalizedMessage());
@@ -108,7 +114,7 @@ public class NativeHttp extends CordovaPlugin {
                     String bodyAsString = new String(responseBody, "UTF-8");
                     JSONObject response = new JSONObject();
                     response.put("status", statusCode);
-                    response.put("headers", headers);
+                    response.put("headers", headersToJson(headers));
                     response.put("body", bodyAsString);
                     callbackContext.success(response);
                 } catch (Exception e) {
@@ -122,7 +128,7 @@ public class NativeHttp extends CordovaPlugin {
                     String bodyAsString = new String(responseBody, "UTF-8");
                     JSONObject response = new JSONObject();
                     response.put("status", statusCode);
-                    response.put("headers", headers);
+                    response.put("headers", headersToJson(headers));
                     response.put("body", bodyAsString);
                     response.put("error", error.getLocalizedMessage());
                     callbackContext.error(response);
@@ -133,35 +139,24 @@ public class NativeHttp extends CordovaPlugin {
         };
     }
 
-    private ResponseHandlerInterface getJSONResponseHandler(final CallbackContext callbackContext) {
-        return new JsonHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject responseBody) {
-                try {
-                    JSONObject response = new JSONObject();
-                    response.put("status", statusCode);
-                    response.put("headers", headers);
-                    response.put("body", responseBody);
-                    callbackContext.success(response);
-                } catch (JSONException e) {
-                    callbackContext.error(e.getMessage());
-                }
-            }
 
-            @Override
-            public void onFailure(int statusCode, Header[] headers, Throwable error, JSONObject responseBody) {
-                try {
-                    JSONObject response = new JSONObject();
-                    response.put("status", statusCode);
-                    response.put("headers", headers);
-                    response.put("body", responseBody);
-                    response.put("error", error.getLocalizedMessage());
-                    callbackContext.error(response);
-                } catch (JSONException e) {
-                    callbackContext.error(e.getMessage());
+    private JSONObject headersToJson(Header[] headers) {
+
+        JSONObject _headers = new JSONObject();
+
+        try {
+            if (headers != null) {
+                for (Header header:
+                     headers) {
+                    _headers.put(header.getName(), header.getValue());
                 }
             }
-        };
+        } catch (Exception e) {
+            Log.d("NativeHttp", e.getLocalizedMessage());
+        }
+
+        return _headers;
+
     }
 
 }

@@ -1,14 +1,21 @@
 import { exec } from 'cordova';
 
-interface RequestOptions {
+interface IRequestOptions {
     params?: { [key: string]: any };
     headers?: { [key: string]: any };
     body?: any;
 }
 
+interface IHttpResponse {
+    status: number;
+    headers: any;
+    body: any;
+    error?: string;
+}
+
 function getHttpRequestHandler(callback: Function) {
-    return (response: HttpResponse) => {
-        callback(new Response(response));
+    return (response: IHttpResponse) => {
+        callback(new HttpResponse(response));
     };
 }
 
@@ -26,36 +33,27 @@ function Cordova() {
 
 const SERVICE_NAME: string = 'NativeHttp';
 
-interface HttpResponse {
+class HttpResponse {
+
     status: number;
-    headers: any;
+    headers: any[];
     body: any;
-    error?: string;
-}
+    error: any;
 
-class Response {
-
-    get status(): number {
-        return this._response.status;
+    constructor(res: IHttpResponse) {
+        if (typeof res === 'string') {
+            this.error = res;
+            return;
+        }
+        this.status = res.status || 0;
+        this.headers = res.headers || [];
+        !!res.body && (this.body = res.body);
+        !!res.error && (this.error = res.error);
     }
 
-    get headers(): any {
-        return this._response.headers;
-    }
-
-    get body(): any {
-        return this._response.body;
-    }
-
-    get error(): string {
-        return this._response.error;
-    }
-
-    constructor(private _response: HttpResponse) {}
-
-    json(): Response {
+    json(): HttpResponse {
         try {
-            this._response.body = JSON.parse(this._response.body);
+            this.body = JSON.parse(this.body);
         } catch (e) {}
         return this;
     }
@@ -64,16 +62,16 @@ class Response {
 
 class NativeHttp {
 
-    private _defaultOptions: RequestOptions = {
+    private _defaultOptions: IRequestOptions = {
         params: {},
         headers: {}
     };
 
-    getDefaultOptions(): RequestOptions {
+    getDefaultOptions(): IRequestOptions {
         return this._defaultOptions;
     }
 
-    setDefaultOptions(options: RequestOptions = {}) {
+    setDefaultOptions(options: IRequestOptions = {}) {
         this._defaultOptions = options;
     }
 
@@ -82,10 +80,10 @@ class NativeHttp {
     }
 
     @Cordova()
-    get(path: string, params?: any, headers?: any): Promise<any> { return; }
+    get(path: string, params?: any, headers?: any): Promise<HttpResponse> { return; }
 
     @Cordova()
-    post(path: string, body?: any, headers?: any): Promise<any> { return; }
+    post(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
 
 }
 
