@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <plugin id="cordova-plugin-native-http" version="0.1.0" xmlns="http://apache.org/cordova/ns/plugins/1.0"
-        xmlns:android="http://schemas.android.com/apk/res/android">
+    xmlns:android="http://schemas.android.com/apk/res/android">
     <name>CordovaHttp</name>
     <js-module name="NativeHttp" src="www/NativeHttp.js">
         <clobbers target="cordova.plugins.NativeHttp"/>
@@ -11,10 +11,19 @@
                 <param name="android-package" value="ca.zyra.cordova.NativeHttp.NativeHttp"/>
             </feature>
         </config-file>
-        <config-file parent="/*" target="AndroidManifest.xml" />
+        <config-file parent="/*" target="AndroidManifest.xml"/>
         <source-file src="src/android/NativeHttp.java" target-dir="src/ca/zyra/cordova/NativeHttp"/>
-        <framework src="com.squareup.retrofit2:retrofit:2.2.0" />
-        <framework src="com.google.code.gson:gson:2.8.0" />
-        <framework src="com.squareup.retrofit2:converter-gson:2.2.0" />
+        <framework src="com.squareup.retrofit2:retrofit:2.2.0"/>
+        <framework src="com.google.code.gson:gson:2.8.0"/>
+        <framework src="com.squareup.retrofit2:converter-gson:2.2.0"/>
+    </platform>
+    <platform name="ios">
+        <config-file parent="/*" target="config.xml">
+            <feature name="NativeHttp">
+                <param name="ios-package" value="NativeHttp"/>
+            </feature>
+        </config-file>
+        <source-file src="src/ios/NativeHttp.m"/>
+        <framework src="AFNetworking" type="podspec" spec="~> 3.1.0"/>
     </platform>
 </plugin>
