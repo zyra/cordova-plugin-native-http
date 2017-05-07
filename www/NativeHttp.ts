@@ -51,11 +51,12 @@ class HttpResponse {
         !!res.error && (this.error = res.error);
     }
 
-    json(): HttpResponse {
+    json(): any {
         try {
-            this.body = JSON.parse(this.body);
-        } catch (e) {}
-        return this;
+            return JSON.parse(this.body);
+        } catch (e) {
+            return this.body;
+        }
     }
 
 }
