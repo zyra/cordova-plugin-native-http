@@ -1,7 +1,7 @@
 # cordova-plugin-native-http
-Native HTTP Client for Cordova Apps
+Native HTTP Client for Cordova Apps.
 
-Work in progress
+Work in progress. So far it seem to be x2 - x2.5 times faster than XHR/Angular Http.
 
 ---
 
