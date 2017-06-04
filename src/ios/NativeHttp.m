@@ -5,6 +5,8 @@
 @property (nonatomic, retain) AFHTTPSessionManager *client;
 @property (nonatomic, retain) AFSecurityPolicy *securityPolicy;
 - (void) enableSSLPinning: (CDVInvokedUrlCommand *) command;
+- (void) acceptAllCerts: (CDVInvokedUrlCommand *) command;
+- (void) validateDomainName: (CDVInvokedUrlCommand *) command;
 - (void) get: (CDVInvokedUrlCommand *) command;
 - (void) post: (CDVInvokedUrlCommand *) command;
 - (void) put: (CDVInvokedUrlCommand *) command;
@@ -15,25 +17,34 @@
 - (void) upload: (CDVInvokedUrlCommand *) command;
 @end
 
+// influenced by https://github.com/wymsee/cordova-HTTP/blob/master/src/ios/CordovaHttpPlugin.m
 @implementation NativeHttp
 @synthesize client;
 @synthesize securityPolicy;
 
-- (void)pluginInitialize
+- (void) pluginInitialize
 {
     NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
     client = [[AFHTTPSessionManager alloc] initWithSessionConfiguration:config];
-    client.responseSerializer = [AFHTTPResponseSerializer serializer];
 }
 
-- (void)enableSSLPinning: (CDVInvokedUrlCommand *) command
+- (void) enableSSLPinning:(CDVInvokedUrlCommand *) command
 {
     if ([[command.arguments objectAtIndex:0] boolValue]) {
         self.securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeCertificate];
     } else {
         self.securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeNone];
     }
-    
+    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:command.callbackId];
+}
+
+- (void) acceptAllCerts:(CDVInvokedUrlCommand *) command {
+    securityPolicy.allowInvalidCertificates = [[command.arguments objectAtIndex:0] boolValue];
+    [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:command.callbackId];
+}
+
+- (void) validateDomainName:(CDVInvokedUrlCommand*)command {
+    securityPolicy.validatesDomainName = [[command.arguments objectAtIndex:0] boolValue];
     [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:command.callbackId];
 }
 
@@ -57,7 +68,7 @@
 {
     return ^(NSURLSessionTask *operation, NSError * _Nonnull error) {
         // on error
-        NSHTTPURLResponse *response = (NSHTTPURLResponse *) [operation response];
+        NSHTTPURLResponse *response = (NSHTTPURLResponse *) operation.response;
         NSNumber *statusCode = [NSNumber numberWithInteger:[response statusCode]];
         NSString* ErrorResponse = [[NSString alloc] initWithData:(NSData *)error.userInfo[AFNetworkingOperationFailingURLResponseDataErrorKey] encoding:NSUTF8StringEncoding];
         
@@ -76,18 +87,21 @@
     };
 }
 
-- (void)get:(CDVInvokedUrlCommand *) command
+- (void) get:(CDVInvokedUrlCommand *) command
 {
     [self.commandDelegate runInBackground:^{
         [client GET:[command.arguments objectAtIndex:0] parameters:nil progress:nil success:[self getSuccessHandler:command] failure:[self getErrorHandler:command]];
     }];
 }
 
-- (void)post:(CDVInvokedUrlCommand *) command
+- (void) post:(CDVInvokedUrlCommand *) command
 {
     [self.commandDelegate runInBackground:^{
+        
         AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
         manager.requestSerializer = [AFJSONRequestSerializer serializer];
+        manager.responseSerializer = [AFHTTPResponseSerializer serializer];
+        
         NSDictionary *headers = [command.arguments objectAtIndex:2];
         if (headers != nil) {
             [headers enumerateKeysAndObjectsUsingBlock:^(NSString*  _Nonnull key, NSString*  _Nonnull obj, BOOL * _Nonnull stop) {
@@ -103,11 +117,11 @@
     }];
 }
 
-- (void)put:(CDVInvokedUrlCommand *) command {}
-- (void)head:(CDVInvokedUrlCommand *) command {}
-- (void)delete:(CDVInvokedUrlCommand *) command {}
-- (void)patch:(CDVInvokedUrlCommand *) command {}
-- (void)download:(CDVInvokedUrlCommand *) command {}
-- (void)upload:(CDVInvokedUrlCommand *) command {}
+- (void) put:(CDVInvokedUrlCommand *) command {}
+- (void) head:(CDVInvokedUrlCommand *) command {}
+- (void) delete:(CDVInvokedUrlCommand *) command {}
+- (void) patch:(CDVInvokedUrlCommand *) command {}
+- (void) download:(CDVInvokedUrlCommand *) command {}
+- (void) upload:(CDVInvokedUrlCommand *) command {}
 
 @end
