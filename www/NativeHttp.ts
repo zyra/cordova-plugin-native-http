@@ -13,20 +13,55 @@ interface IHttpResponse {
     error?: string;
 }
 
+interface ICordovaDecoratorConfig {
+    defaultArgs?: any[];
+    mergeDefaults?: boolean[];
+    httpRequest?: boolean;
+}
+
 function getHttpRequestHandler(callback: Function) {
     return (response: IHttpResponse) => {
         callback(new HttpResponse(response));
     };
 }
 
-function Cordova() {
+function Cordova(config?: ICordovaDecoratorConfig) {
     return function(target: NativeHttp, methodName: string, descriptor: TypedPropertyDescriptor<any>): TypedPropertyDescriptor<any> {
       return {
           value: function(...args: any[]) {
+
+              // if (config && config.defaultArgs) {
+              //     config.defaultArgs.forEach((value: any, index: number) => {
+              //        if (config.mergeDefaults && config.mergeDefaults[index] === true) {
+              //            for (let prop in value) {
+              //                if (!args[index][prop]) {
+              //                    args[index][prop] = value;
+              //                }
+              //            }
+              //        } else if (!args[index]) {
+              //            args[index] = value;
+              //        }
+              //     });
+              // }
+
+              if (config && config.httpRequest) {
+                  for (let prop in this._defaultHeaders) {
+                      if (this._defaultHeaders.hasOwnProperty(prop) && !args[2].hasOwnProperty(prop)) {
+                          args[2][prop] = this._defaultHeaders[prop];
+                      }
+                  }
+              }
+
               return new Promise<any>((resolve, reject) => {
-                  exec(getHttpRequestHandler(resolve), getHttpRequestHandler(reject), SERVICE_NAME, methodName, args);
+                  if (config && config.httpRequest) {
+                      exec(getHttpRequestHandler(resolve), getHttpRequestHandler(reject), SERVICE_NAME, methodName, args);
+                  } else {
+                      exec(resolve, reject, SERVICE_NAME, methodName, args);
+                  }
               });
-          }
+          },
+          enumerable: true,
+          configurable: false
       };
     };
 }
@@ -36,7 +71,7 @@ const SERVICE_NAME: string = 'NativeHttp';
 class HttpResponse {
 
     status: number;
-    headers: any[];
+    headers: any;
     body: any;
     error: any;
 
@@ -61,12 +96,18 @@ class HttpResponse {
 
 }
 
+const CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST: ICordovaDecoratorConfig = {
+    httpRequest: true
+};
+
 class NativeHttp {
 
     private _defaultOptions: IRequestOptions = {
         params: {},
         headers: {}
     };
+
+    private _defaultHeaders: any = {};
 
     getDefaultOptions(): IRequestOptions {
         return this._defaultOptions;
@@ -77,14 +118,41 @@ class NativeHttp {
     }
 
     setDefaultHeaders(headers: any = {}) {
-        this._defaultOptions.headers = headers;
+        this._defaultHeaders = headers;
     }
 
     @Cordova()
-    get(path: string, params?: any, headers?: any): Promise<HttpResponse> { return; }
+    acceptAllCerts(accept: boolean): Promise<void> { return; }
 
     @Cordova()
+    enableSSLPinning(enable: boolean): Promise<void> { return; }
+
+    @Cordova()
+    validateDomainName(validate: boolean): Promise<void> { return; }
+
+    @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
+    get(path: string, params?: any, headers?: any): Promise<HttpResponse> { return; }
+
+    @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
     post(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+
+    @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
+    put(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+
+    @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
+    patch(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+
+    @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
+    head(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+
+    @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
+    delete(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+
+    @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
+    download(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+
+    @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
+    upload(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
 
 }
 
