@@ -43,10 +43,11 @@ var HttpResponse = (function () {
     }
     HttpResponse.prototype.json = function () {
         try {
-            this.body = JSON.parse(this.body);
+            return JSON.parse(this.body);
         }
-        catch (e) { }
-        return this;
+        catch (e) {
+            return this.body;
+        }
     };
     return HttpResponse;
 }());
