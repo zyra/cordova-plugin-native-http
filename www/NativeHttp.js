@@ -23,8 +23,12 @@ function Cordova(config) {
                     args[_i] = arguments[_i];
                 }
                 if (config && config.httpRequest) {
+                    if (!args[1])
+                        args[1] = {};
+                    if (!args[2])
+                        args[2] = {};
                     for (var prop in this._defaultHeaders) {
-                        if (this._defaultHeaders.hasOwnProperty(prop) && !args[2].hasOwnProperty(prop)) {
+                        if (!args[2][prop]) {
                             args[2][prop] = this._defaultHeaders[prop];
                         }
                     }
