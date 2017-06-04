@@ -56,6 +56,24 @@ function Cordova(config?: ICordovaDecoratorConfig) {
                           args[2][prop] = this._defaultHeaders[prop];
                       }
                   }
+
+                  if (['post', 'put', 'patch'].indexOf(methodName) > -1) {
+                      if (typeof args[4] !== 'boolean') {
+
+                          // default to json body
+                          args[4] = true;
+
+                          // check for headers to see if there's a content type
+                          for (let prop in args[2]) {
+                              if (String(prop).toLowerCase() === 'content-type' && String(args[2][prop]).toLowerCase() !== 'application/json') {
+                                  // use x-www-url-encoded instead
+                                  args[4] = false;
+                              }
+                          }
+
+                      }
+                  }
+
               }
 
               return new Promise<any>((resolve, reject) => {
@@ -140,13 +158,13 @@ class NativeHttp {
     get(path: string, params?: any, headers?: any): Promise<HttpResponse> { return; }
 
     @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
-    post(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+    post(path: string, body?: any, headers?: any, json: boolean = true): Promise<HttpResponse> { return; }
 
     @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
-    put(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+    put(path: string, body?: any, headers?: any, json: boolean = true): Promise<HttpResponse> { return; }
 
     @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
-    patch(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+    patch(path: string, body?: any, headers?: any, json: boolean = true): Promise<HttpResponse> { return; }
 
     @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
     head(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }

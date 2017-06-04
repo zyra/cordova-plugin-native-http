@@ -1,6 +1,20 @@
 #import <Cordova/CDV.h>
 #import <AFNetworking.h>
 
+@interface LMLPlaintextResponseSerializer : AFHTTPResponseSerializer
+
+@end
+
+@implementation LMLPlaintextResponseSerializer
+
+- (id)responseObjectForResponse:(NSURLResponse *)response data:(NSData *)data error:(NSError *__autoreleasing *)error {
+    [super responseObjectForResponse:response data:data error:error]; //BAD SIDE EFFECTS BAD BUT NECESSARY TO CATCH 500s ETC
+    NSStringEncoding encoding = CFStringConvertEncodingToNSStringEncoding(CFStringConvertIANACharSetNameToEncoding((__bridge CFStringRef)([response textEncodingName] ?: @"utf-8")));
+    return [[NSString alloc] initWithData:data encoding:encoding];
+}
+
+@end
+
 @interface NativeHttp : CDVPlugin
 @property (nonatomic, retain) AFHTTPSessionManager *client;
 @property (nonatomic, retain) AFSecurityPolicy *securityPolicy;
@@ -100,9 +114,15 @@
         
         AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
         manager.requestSerializer = [AFJSONRequestSerializer serializer];
-        manager.responseSerializer = [AFHTTPResponseSerializer serializer];
+        manager.responseSerializer = [LMLPlaintextResponseSerializer serializer];
         
         NSDictionary *headers = [command.arguments objectAtIndex:2];
+        
+        [headers enumerateKeysAndObjectsUsingBlock:^(id  _Nonnull key, id  _Nonnull obj, BOOL * _Nonnull stop) {
+            [manager.requestSerializer setValue:obj forHTTPHeaderField:key];
+        }];
+        
+        
         if (headers != nil) {
             [headers enumerateKeysAndObjectsUsingBlock:^(NSString*  _Nonnull key, NSString*  _Nonnull obj, BOOL * _Nonnull stop) {
                 [manager.requestSerializer setValue:obj forHTTPHeaderField:key];

@@ -32,6 +32,16 @@ function Cordova(config) {
                             args[2][prop] = this._defaultHeaders[prop];
                         }
                     }
+                    if (['post', 'put', 'patch'].indexOf(methodName) > -1) {
+                        if (typeof args[4] !== 'boolean') {
+                            args[4] = true;
+                            for (var prop in args[2]) {
+                                if (String(prop).toLowerCase() === 'content-type' && String(args[2][prop]).toLowerCase() !== 'application/json') {
+                                    args[4] = false;
+                                }
+                            }
+                        }
+                    }
                 }
                 return new Promise(function (resolve, reject) {
                     if (config && config.httpRequest) {
@@ -95,9 +105,18 @@ var NativeHttp = (function () {
     NativeHttp.prototype.enableSSLPinning = function (enable) { return; };
     NativeHttp.prototype.validateDomainName = function (validate) { return; };
     NativeHttp.prototype.get = function (path, params, headers) { return; };
-    NativeHttp.prototype.post = function (path, body, headers) { return; };
-    NativeHttp.prototype.put = function (path, body, headers) { return; };
-    NativeHttp.prototype.patch = function (path, body, headers) { return; };
+    NativeHttp.prototype.post = function (path, body, headers, json) {
+        if (json === void 0) { json = true; }
+        return;
+    };
+    NativeHttp.prototype.put = function (path, body, headers, json) {
+        if (json === void 0) { json = true; }
+        return;
+    };
+    NativeHttp.prototype.patch = function (path, body, headers, json) {
+        if (json === void 0) { json = true; }
+        return;
+    };
     NativeHttp.prototype.head = function (path, body, headers) { return; };
     NativeHttp.prototype.delete = function (path, body, headers) { return; };
     NativeHttp.prototype.download = function (path, body, headers) { return; };
@@ -131,19 +150,19 @@ __decorate([
 __decorate([
     Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:paramtypes", [String, Object, Object, Boolean]),
     __metadata("design:returntype", Promise)
 ], NativeHttp.prototype, "post", null);
 __decorate([
     Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:paramtypes", [String, Object, Object, Boolean]),
     __metadata("design:returntype", Promise)
 ], NativeHttp.prototype, "put", null);
 __decorate([
     Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:paramtypes", [String, Object, Object, Boolean]),
     __metadata("design:returntype", Promise)
 ], NativeHttp.prototype, "patch", null);
 __decorate([
