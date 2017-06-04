@@ -58,16 +58,16 @@ function Cordova(config?: ICordovaDecoratorConfig) {
                   }
 
                   if (['post', 'put', 'patch'].indexOf(methodName) > -1) {
-                      if (typeof args[4] !== 'boolean') {
+                      if (typeof args[3] !== 'boolean') {
 
                           // default to json body
-                          args[4] = true;
+                          args[3] = true;
 
                           // check for headers to see if there's a content type
                           for (let prop in args[2]) {
                               if (String(prop).toLowerCase() === 'content-type' && String(args[2][prop]).toLowerCase() !== 'application/json') {
                                   // use x-www-url-encoded instead
-                                  args[4] = false;
+                                  args[3] = false;
                               }
                           }
 

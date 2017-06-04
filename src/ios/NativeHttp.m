@@ -1,6 +1,7 @@
 #import <Cordova/CDV.h>
 #import <AFNetworking.h>
 
+// taken from https://gist.github.com/swizzlr/8478966
 @interface LMLPlaintextResponseSerializer : AFHTTPResponseSerializer
 
 @end
@@ -101,6 +102,8 @@
     };
 }
 
+
+
 - (void) get:(CDVInvokedUrlCommand *) command
 {
     [self.commandDelegate runInBackground:^{
@@ -113,7 +116,11 @@
     [self.commandDelegate runInBackground:^{
         
         AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
-        manager.requestSerializer = [AFJSONRequestSerializer serializer];
+        
+        if ([[command.arguments objectAtIndex:3] boolValue]) {
+            manager.requestSerializer = [AFJSONRequestSerializer serializer];
+        }
+        
         manager.responseSerializer = [LMLPlaintextResponseSerializer serializer];
         
         NSDictionary *headers = [command.arguments objectAtIndex:2];
@@ -122,16 +129,11 @@
             [manager.requestSerializer setValue:obj forHTTPHeaderField:key];
         }];
         
-        
         if (headers != nil) {
             [headers enumerateKeysAndObjectsUsingBlock:^(NSString*  _Nonnull key, NSString*  _Nonnull obj, BOOL * _Nonnull stop) {
                 [manager.requestSerializer setValue:obj forHTTPHeaderField:key];
             }];
         }
-        
-        
-        
-//        [manager.requestSerializer setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
         
         [manager POST:[command.arguments objectAtIndex:0] parameters:[command.arguments objectAtIndex:1] progress:nil success:[self getSuccessHandler:command] failure:[self getErrorHandler:command]];
     }];
