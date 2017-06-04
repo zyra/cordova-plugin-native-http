@@ -1,5 +1,5 @@
 {
-  "name": "native-http",
+  "name": "cordova-plugin-native-http",
   "version": "0.1.0",
   "description": "Native HTTP plugin for Cordova Apps",
   "scripts": {
