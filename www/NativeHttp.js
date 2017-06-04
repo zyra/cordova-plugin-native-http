@@ -18,19 +18,6 @@ function Cordova(config) {
     return function (target, methodName, descriptor) {
         return {
             value: function () {
-                // if (config && config.defaultArgs) {
-                //     config.defaultArgs.forEach((value: any, index: number) => {
-                //        if (config.mergeDefaults && config.mergeDefaults[index] === true) {
-                //            for (let prop in value) {
-                //                if (!args[index][prop]) {
-                //                    args[index][prop] = value;
-                //                }
-                //            }
-                //        } else if (!args[index]) {
-                //            args[index] = value;
-                //        }
-                //     });
-                // }
                 var args = [];
                 for (var _i = 0; _i < arguments.length; _i++) {
                     args[_i] = arguments[_i];
