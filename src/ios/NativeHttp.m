@@ -17,7 +17,7 @@
 @end
 
 @interface NativeHttp : CDVPlugin
-@property (nonatomic, retain) AFHTTPSessionManager *client;
+//@property (nonatomic, retain) AFHTTPSessionManager *client;
 @property (nonatomic, retain) AFSecurityPolicy *securityPolicy;
 - (void) enableSSLPinning: (CDVInvokedUrlCommand *) command;
 - (void) acceptAllCerts: (CDVInvokedUrlCommand *) command;
@@ -34,13 +34,14 @@
 
 // influenced by https://github.com/wymsee/cordova-HTTP/blob/master/src/ios/CordovaHttpPlugin.m
 @implementation NativeHttp
-@synthesize client;
+//@synthesize client;
 @synthesize securityPolicy;
 
 - (void) pluginInitialize
 {
-    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
-    client = [[AFHTTPSessionManager alloc] initWithSessionConfiguration:config];
+   // NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+    //client = [[AFHTTPSessionManager alloc] initWithSessionConfiguration:config];
+    self.securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeNone];
 }
 
 - (void) enableSSLPinning:(CDVInvokedUrlCommand *) command
@@ -63,18 +64,23 @@
     [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK] callbackId:command.callbackId];
 }
 
+- (NSDictionary *) getResponseObject: (NSURLSessionTask *) operation withResponseObject: (id _Nullable) body
+{
+    NSHTTPURLResponse *response = (NSHTTPURLResponse *) [operation response];
+    NSNumber *statusCode = [NSNumber numberWithInteger:[response statusCode]];
+    NSDictionary *res = @{
+                          @"status": statusCode,
+                          @"headers": [response allHeaderFields],
+                          @"body": body
+                          };
+    
+    return res;
+}
+
 - (void (^)(NSURLSessionTask *, id _Nullable)) getSuccessHandler:(CDVInvokedUrlCommand *) command
 {
     return ^(NSURLSessionTask *operation, id  _Nullable responseObject) {
-        NSHTTPURLResponse *response = (NSHTTPURLResponse *) [operation response];
-        NSNumber *statusCode = [NSNumber numberWithInteger:[response statusCode]];
-        NSDictionary *res = @{
-                              @"status": statusCode,
-                              @"headers": [response allHeaderFields],
-                              @"body": responseObject
-                              };
-        
-        CDVPluginResult * result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:res];
+        CDVPluginResult * result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:[self getResponseObject:operation withResponseObject:responseObject]];
         [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
     };
 }
@@ -102,48 +108,96 @@
     };
 }
 
+- (void) setHeaders: (NSDictionary *) headers forManager: (AFHTTPSessionManager *) manager
+{
+    if (headers != nil) {
+        [headers enumerateKeysAndObjectsUsingBlock:^(NSString*  _Nonnull key, NSString*  _Nonnull obj, BOOL * _Nonnull stop) {
+            [manager.requestSerializer setValue:obj forHTTPHeaderField:key];
+        }];
+    }
+}
 
+- (AFHTTPSessionManager *) getManager: (CDVInvokedUrlCommand *) command
+{
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.securityPolicy = self.securityPolicy;
+    if ([[command.arguments objectAtIndex:3] boolValue] == TRUE) {
+        manager.requestSerializer = [AFJSONRequestSerializer serializer];
+    }
+    
+    [self setHeaders:[command.arguments objectAtIndex:2] forManager:manager];
+    
+    return manager;
+}
 
 - (void) get:(CDVInvokedUrlCommand *) command
 {
     [self.commandDelegate runInBackground:^{
-        [client GET:[command.arguments objectAtIndex:0] parameters:nil progress:nil success:[self getSuccessHandler:command] failure:[self getErrorHandler:command]];
+        [[self getManager:command] GET:[command.arguments objectAtIndex:0] parameters:[command.arguments objectAtIndex:1] progress:nil success:[self getSuccessHandler:command] failure:[self getErrorHandler:command]];
     }];
 }
 
 - (void) post:(CDVInvokedUrlCommand *) command
 {
     [self.commandDelegate runInBackground:^{
-        
-        AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
-        
-        if ([[command.arguments objectAtIndex:3] boolValue]) {
-            manager.requestSerializer = [AFJSONRequestSerializer serializer];
-        }
-        
-        manager.responseSerializer = [LMLPlaintextResponseSerializer serializer];
-        
-        NSDictionary *headers = [command.arguments objectAtIndex:2];
-        
-        [headers enumerateKeysAndObjectsUsingBlock:^(id  _Nonnull key, id  _Nonnull obj, BOOL * _Nonnull stop) {
-            [manager.requestSerializer setValue:obj forHTTPHeaderField:key];
-        }];
-        
-        if (headers != nil) {
-            [headers enumerateKeysAndObjectsUsingBlock:^(NSString*  _Nonnull key, NSString*  _Nonnull obj, BOOL * _Nonnull stop) {
-                [manager.requestSerializer setValue:obj forHTTPHeaderField:key];
-            }];
-        }
-        
-        [manager POST:[command.arguments objectAtIndex:0] parameters:[command.arguments objectAtIndex:1] progress:nil success:[self getSuccessHandler:command] failure:[self getErrorHandler:command]];
+        [[self getManager:command] POST:[command.arguments objectAtIndex:0] parameters:[command.arguments objectAtIndex:1] progress:nil success:[self getSuccessHandler:command] failure:[self getErrorHandler:command]];
     }];
 }
 
-- (void) put:(CDVInvokedUrlCommand *) command {}
-- (void) head:(CDVInvokedUrlCommand *) command {}
-- (void) delete:(CDVInvokedUrlCommand *) command {}
-- (void) patch:(CDVInvokedUrlCommand *) command {}
-- (void) download:(CDVInvokedUrlCommand *) command {}
-- (void) upload:(CDVInvokedUrlCommand *) command {}
+- (void) put:(CDVInvokedUrlCommand *) command {
+    [self.commandDelegate runInBackground:^{
+        [[self getManager:command] PUT:[command.arguments objectAtIndex:0] parameters:[command.arguments objectAtIndex:1] success:[self getSuccessHandler:command] failure:[self getErrorHandler:command]];
+    }];
+}
+
+- (void) head:(CDVInvokedUrlCommand *) command {
+    [self.commandDelegate runInBackground:^{
+        [[self getManager:command] HEAD:[command.arguments objectAtIndex:0] parameters:[command.arguments objectAtIndex:1] success:^(NSURLSessionTask *operation) {
+            CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:[self getResponseObject:operation withResponseObject:nil]];
+            [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+        } failure:[self getErrorHandler:command]];
+        
+    }];
+}
+
+- (void) delete:(CDVInvokedUrlCommand *) command {
+    [self.commandDelegate runInBackground:^{
+        [[self getManager:command] DELETE:[command.arguments objectAtIndex:0] parameters:[command.arguments objectAtIndex:1] success:[self getSuccessHandler:command] failure:[self getErrorHandler:command]];
+    }];
+}
+
+- (void) patch:(CDVInvokedUrlCommand *) command {
+    [self.commandDelegate runInBackground:^{
+        [[self getManager:command] PATCH:[command.arguments objectAtIndex:0] parameters:[command.arguments objectAtIndex:1] success:[self getSuccessHandler:command] failure:[self getErrorHandler:command]];
+    }];
+}
+
+- (void) download:(CDVInvokedUrlCommand *) command {
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.securityPolicy = self.securityPolicy;
+    [self setHeaders:[command.arguments objectAtIndex:2] forManager:manager];
+
+    
+    
+}
+
+- (void) upload:(CDVInvokedUrlCommand *) command {
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.securityPolicy = self.securityPolicy;
+    [self setHeaders:[command.arguments objectAtIndex:2] forManager:manager];
+
+    NSURLRequest *uploadRequest = [[AFHTTPRequestSerializer serializer] multipartFormRequestWithMethod:@"POST" URLString:[command.arguments objectAtIndex:0] parameters:nil constructingBodyWithBlock:^(id<AFMultipartFormData>  _Nonnull formData) {
+        
+    } error:nil];
+    
+    NSURLSessionUploadTask *uploadTask = [manager uploadTaskWithStreamedRequest:uploadRequest progress:^(NSProgress * _Nonnull uploadProgress) {
+        
+    } completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
+        
+    }];
+    
+    [uploadTask resume];
+    
+}
 
 @end

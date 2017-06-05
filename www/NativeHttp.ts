@@ -19,6 +19,16 @@ interface ICordovaDecoratorConfig {
     httpRequest?: boolean;
 }
 
+interface IFileUploadOptions {
+    fileKey: string;
+    fileName: string;
+    httpMethod: 'put' | 'post';
+    mimeType: string;
+    params: any;
+    chunkedMode: boolean;
+    headers: any;
+}
+
 function getHttpRequestHandler(callback: Function) {
     return (response: IHttpResponse) => {
         callback(new HttpResponse(response));
@@ -72,6 +82,8 @@ function Cordova(config?: ICordovaDecoratorConfig) {
                           }
 
                       }
+                  } else {
+                      args[3] = false;
                   }
 
               }
@@ -167,16 +179,16 @@ class NativeHttp {
     patch(path: string, body?: any, headers?: any, json: boolean = true): Promise<HttpResponse> { return; }
 
     @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
-    head(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+    head(path: string, params?: any, headers?: any): Promise<HttpResponse> { return; }
 
     @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
-    delete(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+    delete(path: string, params?: any, headers?: any): Promise<HttpResponse> { return; }
 
     @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
-    download(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+    download(remotePath: string, localPath: string, params?: any, headers?: any): Promise<HttpResponse> { return; }
 
     @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
-    upload(path: string, body?: any, headers?: any): Promise<HttpResponse> { return; }
+    upload(remotePath: string, localPath: string, options: IFileUploadOptions): Promise<HttpResponse> { return; }
 
 }
 

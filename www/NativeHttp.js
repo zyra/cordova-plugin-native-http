@@ -33,14 +33,17 @@ function Cordova(config) {
                         }
                     }
                     if (['post', 'put', 'patch'].indexOf(methodName) > -1) {
-                        if (typeof args[4] !== 'boolean') {
-                            args[4] = true;
+                        if (typeof args[3] !== 'boolean') {
+                            args[3] = true;
                             for (var prop in args[2]) {
                                 if (String(prop).toLowerCase() === 'content-type' && String(args[2][prop]).toLowerCase() !== 'application/json') {
-                                    args[4] = false;
+                                    args[3] = false;
                                 }
                             }
                         }
+                    }
+                    else {
+                        args[3] = false;
                     }
                 }
                 return new Promise(function (resolve, reject) {
