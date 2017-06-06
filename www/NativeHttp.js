@@ -85,6 +85,13 @@ var HttpResponse = (function () {
 var CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST = {
     httpRequest: true
 };
+var DEFAULT_UPLOAD_OPTIONS = {
+    fileKey: 'file',
+    fileName: 'image.jpg',
+    mimeType: 'image/jpeg',
+    chunkedMode: true,
+    httpMethod: 'POST'
+};
 var NativeHttp = (function () {
     function NativeHttp() {
         this._defaultOptions = {
@@ -120,10 +127,26 @@ var NativeHttp = (function () {
         if (json === void 0) { json = true; }
         return;
     };
-    NativeHttp.prototype.head = function (path, body, headers) { return; };
-    NativeHttp.prototype.delete = function (path, body, headers) { return; };
-    NativeHttp.prototype.download = function (path, body, headers) { return; };
-    NativeHttp.prototype.upload = function (path, body, headers) { return; };
+    NativeHttp.prototype.head = function (path, params, headers) { return; };
+    NativeHttp.prototype.delete = function (path, params, headers) { return; };
+    NativeHttp.prototype.download = function (remotePath, localPath, params, headers) { return; };
+    NativeHttp.prototype.upload = function (remotePath, localPath, options) {
+        if (options === void 0) { options = {}; }
+        if (!remotePath) {
+            return Promise.reject({ error: 'You must provide a remote path.' });
+        }
+        else if (!localPath) {
+            return Promise.reject({ error: 'You must provide a local path.' });
+        }
+        for (var prop in DEFAULT_UPLOAD_OPTIONS) {
+            if (!options[prop]) {
+                options[prop] = DEFAULT_UPLOAD_OPTIONS[prop];
+            }
+        }
+        return new Promise(function (resolve, reject) {
+            cordova_1.exec(resolve, reject, SERVICE_NAME, 'upload', [remotePath, localPath, options]);
+        });
+    };
     return NativeHttp;
 }());
 __decorate([
@@ -183,13 +206,7 @@ __decorate([
 __decorate([
     Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:paramtypes", [String, String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], NativeHttp.prototype, "download", null);
-__decorate([
-    Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, Object, Object]),
-    __metadata("design:returntype", Promise)
-], NativeHttp.prototype, "upload", null);
 module.exports = new NativeHttp();

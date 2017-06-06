@@ -17,7 +17,6 @@
 @end
 
 @interface NativeHttp : CDVPlugin
-//@property (nonatomic, retain) AFHTTPSessionManager *client;
 @property (nonatomic, retain) AFSecurityPolicy *securityPolicy;
 - (void) enableSSLPinning: (CDVInvokedUrlCommand *) command;
 - (void) acceptAllCerts: (CDVInvokedUrlCommand *) command;
@@ -32,15 +31,11 @@
 - (void) upload: (CDVInvokedUrlCommand *) command;
 @end
 
-// influenced by https://github.com/wymsee/cordova-HTTP/blob/master/src/ios/CordovaHttpPlugin.m
 @implementation NativeHttp
-//@synthesize client;
 @synthesize securityPolicy;
 
 - (void) pluginInitialize
 {
-   // NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
-    //client = [[AFHTTPSessionManager alloc] initWithSessionConfiguration:config];
     self.securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeNone];
 }
 
@@ -67,14 +62,11 @@
 - (NSDictionary *) getResponseObject: (NSURLSessionTask *) operation withResponseObject: (id _Nullable) body
 {
     NSHTTPURLResponse *response = (NSHTTPURLResponse *) [operation response];
-    NSNumber *statusCode = [NSNumber numberWithInteger:[response statusCode]];
-    NSDictionary *res = @{
-                          @"status": statusCode,
-                          @"headers": [response allHeaderFields],
-                          @"body": body
-                          };
-    
-    return res;
+    return @{
+             @"status": [NSNumber numberWithInteger:[response statusCode]],
+             @"headers": response != nil ? [response allHeaderFields] : @{},
+             @"body": body
+             };
 }
 
 - (void (^)(NSURLSessionTask *, id _Nullable)) getSuccessHandler:(CDVInvokedUrlCommand *) command
@@ -91,16 +83,16 @@
         // on error
         NSHTTPURLResponse *response = (NSHTTPURLResponse *) operation.response;
         NSNumber *statusCode = [NSNumber numberWithInteger:[response statusCode]];
-        NSString* ErrorResponse = [[NSString alloc] initWithData:(NSData *)error.userInfo[AFNetworkingOperationFailingURLResponseDataErrorKey] encoding:NSUTF8StringEncoding];
+        NSString* errorMessage = [[NSString alloc] initWithData:(NSData *)error.userInfo[AFNetworkingOperationFailingURLResponseDataErrorKey] encoding:NSUTF8StringEncoding];
         
-        if (ErrorResponse == nil) {
-            ErrorResponse = error.localizedDescription;
+        if (errorMessage == nil || errorMessage.length == 0) {
+            errorMessage = error.localizedDescription;
         }
         
         NSDictionary *res = @{
                               @"status": statusCode,
-                              @"headers": [response allHeaderFields],
-                              @"body": ErrorResponse
+                              @"headers": response != nil ? [response allHeaderFields] : @{},
+                              @"body": errorMessage
                               };
         
         CDVPluginResult * result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:res];
@@ -120,6 +112,7 @@
 - (AFHTTPSessionManager *) getManager: (CDVInvokedUrlCommand *) command
 {
     AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer = [LMLPlaintextResponseSerializer serializer];
     manager.securityPolicy = self.securityPolicy;
     if ([[command.arguments objectAtIndex:3] boolValue] == TRUE) {
         manager.requestSerializer = [AFJSONRequestSerializer serializer];
@@ -182,21 +175,42 @@
 }
 
 - (void) upload:(CDVInvokedUrlCommand *) command {
-    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
-    manager.securityPolicy = self.securityPolicy;
-    [self setHeaders:[command.arguments objectAtIndex:2] forManager:manager];
-
-    NSURLRequest *uploadRequest = [[AFHTTPRequestSerializer serializer] multipartFormRequestWithMethod:@"POST" URLString:[command.arguments objectAtIndex:0] parameters:nil constructingBodyWithBlock:^(id<AFMultipartFormData>  _Nonnull formData) {
-        
-    } error:nil];
     
-    NSURLSessionUploadTask *uploadTask = [manager uploadTaskWithStreamedRequest:uploadRequest progress:^(NSProgress * _Nonnull uploadProgress) {
+    [self.commandDelegate runInBackground:^{
+        AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+        manager.responseSerializer = [LMLPlaintextResponseSerializer serializer];
         
-    } completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
+        manager.securityPolicy = self.securityPolicy;
+        [self setHeaders:[command.arguments objectAtIndex:2] forManager:manager];
         
+        NSDictionary *options = [command.arguments objectAtIndex:2];
+        
+        NSURLRequest *uploadRequest = [[AFHTTPRequestSerializer serializer] multipartFormRequestWithMethod:[options valueForKey:@"httpMethod"] URLString:[command.arguments objectAtIndex:0] parameters:nil constructingBodyWithBlock:^(id<AFMultipartFormData>  _Nonnull formData) {
+            
+            NSString *path = [command.arguments objectAtIndex:1];
+            NSURL *url = [NSURL URLWithString:path];
+            
+            NSData *data = [NSData dataWithContentsOfFile:url.path];
+            
+            // NSData *data = [[NSFileManager defaultManager] contentsAtPath:[command.arguments objectAtIndex:1]];
+            
+            [formData appendPartWithFileData:data name:[options objectForKey:@"fileKey"] fileName:[options objectForKey:@"fileName"] mimeType:[options objectForKey:@"mimeType"]];
+            
+        } error:nil];
+        
+        NSURLSessionUploadTask *uploadTask = [manager uploadTaskWithStreamedRequest:uploadRequest progress:^(NSProgress * _Nonnull uploadProgress) {
+            
+        } completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
+            //CDVPluginResult *result;
+            if (error) {
+                NSLog(@"Error: %@", error);
+            } else {
+                NSLog(@"RESPONSE IS %@ %@", response, responseObject);
+            }
+        }];
+        
+        [uploadTask resume];
     }];
-    
-    [uploadTask resume];
     
 }
 
