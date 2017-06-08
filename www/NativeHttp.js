@@ -129,7 +129,24 @@ var NativeHttp = (function () {
     };
     NativeHttp.prototype.head = function (path, params, headers) { return; };
     NativeHttp.prototype.delete = function (path, params, headers) { return; };
-    NativeHttp.prototype.download = function (remotePath, localPath, params, headers) { return; };
+    NativeHttp.prototype.download = function (remotePath, localPath, params, headers, onProgress) {
+        if (!remotePath) {
+            return Promise.reject({ error: 'You must provide a remote path.' });
+        }
+        else if (!localPath) {
+            return Promise.reject({ error: 'You must provide a local path.' });
+        }
+        return new Promise(function (resolve, reject) {
+            cordova_1.exec(function (data) {
+                if (!!data.total && typeof onProgress === 'function') {
+                    onProgress(data);
+                }
+                else {
+                    resolve(data);
+                }
+            }, reject, SERVICE_NAME, 'download', [remotePath, localPath, params, headers]);
+        });
+    };
     NativeHttp.prototype.upload = function (remotePath, localPath, options) {
         if (options === void 0) { options = {}; }
         if (!remotePath) {
@@ -203,10 +220,4 @@ __decorate([
     __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], NativeHttp.prototype, "delete", null);
-__decorate([
-    Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, Object, Object]),
-    __metadata("design:returntype", Promise)
-], NativeHttp.prototype, "download", null);
 module.exports = new NativeHttp();

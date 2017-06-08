@@ -192,8 +192,29 @@ class NativeHttp {
     @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
     delete(path: string, params?: any, headers?: any): Promise<HttpResponse> { return; }
 
-    @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
-    download(remotePath: string, localPath: string, params?: any, headers?: any): Promise<HttpResponse> { return; }
+    download(remotePath: string, localPath: string, params?: any, headers?: any, onProgress?: Function): Promise<HttpResponse> {
+
+        if (!remotePath) {
+            return Promise.reject({ error: 'You must provide a remote path.' });
+        } else if(!localPath) {
+            return Promise.reject({ error: 'You must provide a local path.' });
+        }
+
+        return new Promise<HttpResponse>((resolve, reject) => {
+
+            exec((data: any) => {
+
+                if (!!data.total && typeof onProgress === 'function') {
+                    onProgress(data);
+                } else {
+                    resolve(data);
+                }
+
+            }, reject, SERVICE_NAME, 'download', [remotePath, localPath, params, headers]);
+
+        });
+
+    }
 
     upload(remotePath: string, localPath: string, options: IFileUploadOptions = {}): Promise<HttpResponse> {
         if (!remotePath) {

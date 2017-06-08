@@ -166,11 +166,34 @@
 }
 
 - (void) download:(CDVInvokedUrlCommand *) command {
-    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
-    manager.securityPolicy = self.securityPolicy;
-    [self setHeaders:[command.arguments objectAtIndex:2] forManager:manager];
-
     
+    [self.commandDelegate runInBackground:^{
+        AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+        manager.securityPolicy = self.securityPolicy;
+        manager.responseSerializer = [LMLPlaintextResponseSerializer serializer];
+        [self setHeaders:[command.arguments objectAtIndex:2] forManager:manager];
+
+        NSURL *path = [NSURL URLWithString:[command.arguments objectAtIndex:1]];
+        
+        NSURLRequest *downloadRequest = [NSURLRequest requestWithURL:[NSURL URLWithString:[command.arguments objectAtIndex:0]]];
+        
+        NSURLSessionDownloadTask *downloadTask = [manager downloadTaskWithRequest:downloadRequest progress:^(NSProgress * _Nonnull downloadProgress) {
+            NSLog(@"Progress: %@", [downloadProgress localizedDescription]);
+            //CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:1];
+            //[result setKeepCallbackAsBool:YES];
+            //[self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+        } destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
+            return path;
+        } completionHandler:^(NSURLResponse * _Nonnull response, NSURL * _Nullable filePath, NSError * _Nullable error) {
+            if (error) {
+                NSLog(@"Error: %@", error);
+            } else {
+                NSLog(@"RESPONSE IS %@ %@", response, filePath);
+            }
+        }];
+        
+        [downloadTask resume];
+    }];
     
 }
 
