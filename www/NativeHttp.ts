@@ -165,6 +165,10 @@ class NativeHttp {
         this._defaultHeaders = headers;
     }
 
+    setDefaultHeader(key: string, value: string) {
+        this._defaultHeaders[key] = value;
+    }
+
     @Cordova()
     acceptAllCerts(accept: boolean): Promise<void> { return; }
 

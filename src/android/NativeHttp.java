@@ -14,40 +14,23 @@ import org.json.JSONObject;
 
 import java.lang.reflect.Type;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import okhttp3.Headers;
-import okhttp3.ResponseBody;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.http.Body;
-import retrofit2.http.GET;
-import retrofit2.http.HeaderMap;
-import retrofit2.http.POST;
-import retrofit2.http.Url;
-import retrofit2.http.QueryMap;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class NativeHttp extends CordovaPlugin {
 
-    interface Service {
-        @GET
-        Call<ResponseBody> get(@Url() String path, @QueryMap Map<String, Object> params, @HeaderMap Map<String, Object> headers);
-
-        @POST
-        Call<ResponseBody> post(@Url() String path, @Body Map<String, Object> body, @HeaderMap Map<String, Object> headers);
-    }
-
-    private Service service;
+    private OkHttpClient client;
 
     @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
-        service = new Retrofit.Builder()
-                .baseUrl("https://zyraapps.com/api/ping/")
-                .build()
-                .create(Service.class);
+        client = new OkHttpClient();
     }
 
     @Override
@@ -62,53 +45,58 @@ public class NativeHttp extends CordovaPlugin {
         return false;
     }
 
+    private void makeRequest(final Request request, final CallbackContext callbackContext) {
+        cordova.getThreadPool().execute(new Runnable() {
+            @Override
+            public void run() {
+                JSONObject responseObject = new JSONObject();
+                try {
+                    Response response = client.newCall(request).execute();
+                    responseObject.put("headers", headersToJson(response.headers()));
+                    responseObject.put("status", response.code());
+                    responseObject.put("body", response.body().string());
+
+                    if (response.isSuccessful()) {
+                        callbackContext.success(responseObject);
+                    } else {
+                        callbackContext.error(responseObject);
+                    }
+                } catch (Exception e) {
+                    callbackContext.error(e.getMessage());
+                }
+            }
+        });
+    }
+
+    private void acceptAllCerts() {}
+
+    private void enableSSLPinning() {}
+
+    private void validateDomainName() {}
+
     private void get(final String path, final JSONObject params, final JSONObject headers, final CallbackContext callbackContext) {
         try {
 
-            final HashMap<String, Object> _params = jsonObjectToHashMap(params);
-            final HashMap<String, Object> _headers = jsonObjectToHashMap(headers);
+            final Request.Builder requestBuilder = new Request.Builder();
 
-            final Call<ResponseBody> call = service.get(path, _params, _headers);
+            final HttpUrl.Builder httpUrlBuilder = HttpUrl.parse(path).newBuilder();
 
-            cordova.getThreadPool().execute(new Runnable() {
-                @Override
-                public void run() {
-                    call.enqueue(new Callback<ResponseBody>() {
-                        @Override
-                        public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                            try {
-                                if (response.isSuccessful()) {
-                                    final JSONObject res = new JSONObject();
-                                    res.put("status", response.code());
+            Iterator<String> paramKeys = params.keys();
 
-                                    res.put("headers", parseHeaders(response.headers()));
-                                    res.put("body", response.body().string());
-                                    callbackContext.success(res);
-                                } else {
-                                    final JSONObject res = new JSONObject();
-                                    res.put("status", response.code());
-                                    res.put("headers", parseHeaders(response.headers()));
-                                    res.put("body", response.body().string());
-                                    callbackContext.error(res);
-                                }
-                            } catch (final Exception e) {
-                                callbackContext.error(e.getLocalizedMessage());
-                            }
-                        }
+            while(paramKeys.hasNext()) {
+                String key = paramKeys.next();
+                httpUrlBuilder.addQueryParameter(key, params.getString(key));
+            }
 
-                        @Override
-                        public void onFailure(Call<ResponseBody> call, Throwable t) {
-                            try {
-                                final JSONObject res = new JSONObject();
-                                res.put("error", t.getLocalizedMessage());
-                                callbackContext.error(res);
-                            } catch (final Exception e) {
-                                callbackContext.error(e.getLocalizedMessage());
-                            }
-                        }
-                    });
-                }
-            });
+            final HttpUrl httpUrl = httpUrlBuilder.build();
+
+            requestBuilder.url(httpUrl);
+
+            requestBuilder.headers(jsonToHeaders(headers));
+
+            final Request request = requestBuilder.build();
+
+            makeRequest(request, callbackContext);
 
         } catch (final Exception e) {
             callbackContext.error(e.getLocalizedMessage());
@@ -124,7 +112,13 @@ public class NativeHttp extends CordovaPlugin {
         }
     }
 
-    private JSONObject parseHeaders(final Headers headers) {
+    private Headers jsonToHeaders(final JSONObject jsonObject) {
+        Type type = new TypeToken<Map<String, String>>(){}.getType();
+        Map<String, String> headersMap = new Gson().fromJson(jsonObject.toString(), type);
+        return Headers.of(headersMap);
+    }
+
+    private JSONObject headersToJson(final Headers headers) {
         final JSONObject obj = new JSONObject();
         for (int i = 0; i < headers.size(); i++) {
             try {

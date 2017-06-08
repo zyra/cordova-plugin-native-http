@@ -13,9 +13,8 @@
         </config-file>
         <config-file parent="/*" target="AndroidManifest.xml"/>
         <source-file src="src/android/NativeHttp.java" target-dir="src/ca/zyra/cordova/NativeHttp"/>
-        <framework src="com.squareup.retrofit2:retrofit:2.2.0"/>
+        <framework src="com.squareup.okhttp3:okhttp:3.8.0"/>
         <framework src="com.google.code.gson:gson:2.8.0"/>
-        <framework src="com.squareup.retrofit2:converter-gson:2.2.0"/>
     </platform>
     <platform name="ios">
         <config-file parent="/*" target="config.xml">
