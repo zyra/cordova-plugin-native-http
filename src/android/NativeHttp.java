@@ -227,6 +227,7 @@ public class NativeHttp extends CordovaPlugin {
             Request request = new Request.Builder()
                     .method(options.getString("httpMethod"), requestBody)
                     .url(httpUrl)
+                    .headers(headers)
                     .build();
 
             makeRequest(request, callbackContext);
