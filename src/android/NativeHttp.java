@@ -13,19 +13,25 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
+import okhttp3.FormBody;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class NativeHttp extends CordovaPlugin {
 
     private OkHttpClient client;
+    private final List<String> httpMethods = Arrays.asList("get", "post", "head", "put", "delete", "patch", "put");
 
     @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
@@ -35,11 +41,22 @@ public class NativeHttp extends CordovaPlugin {
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
-        if (action.equals("get")) {
-            String path = args.getString(0);
-            JSONObject params = args.getJSONObject(1);
-            JSONObject headers = args.getJSONObject(2);
-            this.get(path, params, headers, callbackContext);
+
+        String path;
+        JSONObject paramsOrBody;
+        Headers headers;
+        Boolean isJSON;
+
+        if (httpMethods.contains(action)) {
+            path = args.getString(0);
+            paramsOrBody = args.getJSONObject(1);
+            headers = jsonToHeaders(args.getJSONObject(2));
+            if (action.equals("post") || action.equals("put") || action.equals("patch")) {
+                isJSON = args.getBoolean(3);
+                this.postRequest(action, path, paramsOrBody, headers, isJSON, callbackContext);
+            } else {
+                this.request(action, path, paramsOrBody, headers, callbackContext);
+            }
             return true;
         }
         return false;
@@ -68,31 +85,24 @@ public class NativeHttp extends CordovaPlugin {
         });
     }
 
-    private void acceptAllCerts() {}
-
-    private void enableSSLPinning() {}
-
-    private void validateDomainName() {}
-
-    private void get(final String path, final JSONObject params, final JSONObject headers, final CallbackContext callbackContext) {
+    private void request(final String method, final String path, final JSONObject params, final Headers headers, final CallbackContext callbackContext) {
         try {
 
             final Request.Builder requestBuilder = new Request.Builder();
-
             final HttpUrl.Builder httpUrlBuilder = HttpUrl.parse(path).newBuilder();
 
-            Iterator<String> paramKeys = params.keys();
+            final Iterator<String> paramKeys = params.keys();
 
-            while(paramKeys.hasNext()) {
+            while (paramKeys.hasNext()) {
                 String key = paramKeys.next();
                 httpUrlBuilder.addQueryParameter(key, params.getString(key));
             }
 
             final HttpUrl httpUrl = httpUrlBuilder.build();
 
+            requestBuilder.method(method, null);
             requestBuilder.url(httpUrl);
-
-            requestBuilder.headers(jsonToHeaders(headers));
+            requestBuilder.headers(headers);
 
             final Request request = requestBuilder.build();
 
@@ -101,6 +111,47 @@ public class NativeHttp extends CordovaPlugin {
         } catch (final Exception e) {
             callbackContext.error(e.getLocalizedMessage());
         }
+    }
+
+    private void postRequest(final String method, final String path, final JSONObject body, final Headers headers, final Boolean isJson, final CallbackContext callbackContext) {
+        try {
+            final Request.Builder requestBuilder = new Request.Builder();
+
+            final RequestBody requestBody;
+
+            if (isJson) {
+                requestBody = RequestBody.create(MediaType.parse("application/json"), body.toString());
+            } else {
+                final FormBody.Builder formBodyBuilder = new FormBody.Builder();
+                Iterator<String> bodyKeys = body.keys();
+                while(bodyKeys.hasNext()) {
+                    String key = bodyKeys.next();
+                    formBodyBuilder.add(key, body.getString(key));
+                }
+                requestBody = formBodyBuilder.build();
+            }
+
+
+            requestBuilder.method(method, requestBody);
+            requestBuilder.url(path);
+            requestBuilder.headers(headers);
+
+            final Request request = requestBuilder.build();
+
+            makeRequest(request, callbackContext);
+
+
+        } catch (final Exception e) {
+            callbackContext.error(e.getLocalizedMessage());
+        }
+    }
+
+    private void download(final String remotePath, final String localPath, final JSONObject params, final Headers headers, final CallbackContext callbackContext) {
+
+    }
+
+    private void upload(final String remotePath, final String localPath, final JSONObject params, final Headers headers, final CallbackContext callbackContext) {
+
     }
 
     private HashMap<String, Object> jsonObjectToHashMap(final JSONObject obj) {

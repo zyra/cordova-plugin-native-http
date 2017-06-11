@@ -178,6 +178,8 @@ class NativeHttp {
     @Cordova()
     validateDomainName(validate: boolean): Promise<void> { return; }
 
+    pinSSL(hostname: string, publicKey: string) {}
+
     @Cordova(CORDOVA_DECORATOR_OPTIONS_HTTP_REQUEST)
     get(path: string, params?: any, headers?: any): Promise<HttpResponse> { return; }
 
