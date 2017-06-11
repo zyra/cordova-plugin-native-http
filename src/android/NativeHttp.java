@@ -12,6 +12,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -23,10 +27,13 @@ import okhttp3.FormBody;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.MediaType;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okio.BufferedSink;
+import okio.Okio;
 
 public class NativeHttp extends CordovaPlugin {
 
@@ -42,12 +49,12 @@ public class NativeHttp extends CordovaPlugin {
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
 
-        String path;
-        JSONObject paramsOrBody;
-        Headers headers;
-        Boolean isJSON;
-
         if (httpMethods.contains(action)) {
+            String path;
+            JSONObject paramsOrBody;
+            Headers headers;
+            Boolean isJSON;
+
             path = args.getString(0);
             paramsOrBody = args.getJSONObject(1);
             headers = jsonToHeaders(args.getJSONObject(2));
@@ -58,7 +65,25 @@ public class NativeHttp extends CordovaPlugin {
                 this.request(action, path, paramsOrBody, headers, callbackContext);
             }
             return true;
+        } else if (action.equals("download") || action.equals("upload")) {
+
+            String remotePath = args.getString(0);
+            String localPath = args.getString(1);
+            Headers headers;
+            JSONObject params;
+
+            if (action.equals("download")) {
+                headers = jsonToHeaders(args.getJSONObject(3));
+                params = args.getJSONObject(2);
+                download(remotePath, localPath, params, headers, callbackContext);
+            } else {
+                JSONObject options = args.getJSONObject(2);
+                upload(remotePath, localPath, options, callbackContext);
+            }
+
+            return true;
         }
+
         return false;
     }
 
@@ -71,11 +96,12 @@ public class NativeHttp extends CordovaPlugin {
                     Response response = client.newCall(request).execute();
                     responseObject.put("headers", headersToJson(response.headers()));
                     responseObject.put("status", response.code());
-                    responseObject.put("body", response.body().string());
 
                     if (response.isSuccessful()) {
+                        responseObject.put("body", response.body().string());
                         callbackContext.success(responseObject);
                     } else {
+                        responseObject.put("error", response.body().string());
                         callbackContext.error(responseObject);
                     }
                 } catch (Exception e) {
@@ -85,29 +111,30 @@ public class NativeHttp extends CordovaPlugin {
         });
     }
 
+    private Request createRequest(final String method, final String path, final JSONObject params, final Headers headers) throws JSONException {
+        final Request.Builder requestBuilder = new Request.Builder();
+        final HttpUrl.Builder httpUrlBuilder = HttpUrl.parse(path).newBuilder();
+
+        final Iterator<String> paramKeys = params.keys();
+
+        while (paramKeys.hasNext()) {
+            String key = paramKeys.next();
+            httpUrlBuilder.addQueryParameter(key, params.getString(key));
+        }
+
+        final HttpUrl httpUrl = httpUrlBuilder.build();
+
+        requestBuilder.method(method, null);
+        requestBuilder.url(httpUrl);
+        requestBuilder.headers(headers);
+
+        final Request request = requestBuilder.build();
+        return request;
+    }
+
     private void request(final String method, final String path, final JSONObject params, final Headers headers, final CallbackContext callbackContext) {
         try {
-
-            final Request.Builder requestBuilder = new Request.Builder();
-            final HttpUrl.Builder httpUrlBuilder = HttpUrl.parse(path).newBuilder();
-
-            final Iterator<String> paramKeys = params.keys();
-
-            while (paramKeys.hasNext()) {
-                String key = paramKeys.next();
-                httpUrlBuilder.addQueryParameter(key, params.getString(key));
-            }
-
-            final HttpUrl httpUrl = httpUrlBuilder.build();
-
-            requestBuilder.method(method, null);
-            requestBuilder.url(httpUrl);
-            requestBuilder.headers(headers);
-
-            final Request request = requestBuilder.build();
-
-            makeRequest(request, callbackContext);
-
+            makeRequest(createRequest(method, path, params, headers), callbackContext);
         } catch (final Exception e) {
             callbackContext.error(e.getLocalizedMessage());
         }
@@ -147,11 +174,66 @@ public class NativeHttp extends CordovaPlugin {
     }
 
     private void download(final String remotePath, final String localPath, final JSONObject params, final Headers headers, final CallbackContext callbackContext) {
+        cordova.getThreadPool().execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final Request request = createRequest("get", remotePath, params, headers);
 
+                    Response response = client.newCall(request).execute();
+                    JSONObject responseObject = new JSONObject();
+                    responseObject.put("headers", headersToJson(response.headers()));
+                    responseObject.put("status", response.code());
+
+                    if (response.isSuccessful()) {
+                        File file = new File(localPath);
+                        BufferedSink bufferedSink = Okio.buffer(Okio.sink(file));
+                        bufferedSink.writeAll(response.body().source());
+                        bufferedSink.close();
+                        callbackContext.success(responseObject);
+                    } else {
+                        responseObject.put("error", response.body().string());
+                        callbackContext.error(responseObject);
+                    }
+
+                } catch (final Exception e) {
+                    callbackContext.error(e.getLocalizedMessage());
+                }
+            }
+        });
     }
 
-    private void upload(final String remotePath, final String localPath, final JSONObject params, final Headers headers, final CallbackContext callbackContext) {
+    private void upload(final String remotePath, final String localPath, final JSONObject options, final CallbackContext callbackContext) {
+        try {
+            Headers headers = jsonToHeaders(options.getJSONObject("headers"));
+            JSONObject params = options.getJSONObject("params");
 
+            RequestBody requestBody = new MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart(options.getString("fileKey"), options.getString("fileName"), RequestBody.create(MediaType.parse(options.getString("mimeType")), new File(localPath)))
+                    .build();
+
+            final HttpUrl.Builder httpUrlBuilder = HttpUrl.parse(remotePath).newBuilder();
+
+            final Iterator<String> paramKeys = params.keys();
+
+            while (paramKeys.hasNext()) {
+                String key = paramKeys.next();
+                httpUrlBuilder.addQueryParameter(key, params.getString(key));
+            }
+
+            final HttpUrl httpUrl = httpUrlBuilder.build();
+
+            Request request = new Request.Builder()
+                    .method(options.getString("httpMethod"), requestBody)
+                    .url(httpUrl)
+                    .build();
+
+            makeRequest(request, callbackContext);
+
+        } catch (final Exception e) {
+            callbackContext.error(e.getLocalizedMessage());
+        }
     }
 
     private HashMap<String, Object> jsonObjectToHashMap(final JSONObject obj) {

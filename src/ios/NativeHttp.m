@@ -100,9 +100,9 @@
     };
 }
 
-- (void) setHeaders: (NSDictionary *) headers forManager: (AFHTTPSessionManager *) manager
+- (void) setHeaders: (NSDictionary *) headers forManager: ( AFHTTPSessionManager *) manager
 {
-    if (headers != nil) {
+    if (headers != nil && [headers isKindOfClass:[NSDictionary class]]) {
         [headers enumerateKeysAndObjectsUsingBlock:^(NSString*  _Nonnull key, NSString*  _Nonnull obj, BOOL * _Nonnull stop) {
             [manager.requestSerializer setValue:obj forHTTPHeaderField:key];
         }];
@@ -179,17 +179,34 @@
         
         NSURLSessionDownloadTask *downloadTask = [manager downloadTaskWithRequest:downloadRequest progress:^(NSProgress * _Nonnull downloadProgress) {
             NSLog(@"Progress: %@", [downloadProgress localizedDescription]);
-            //CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsInt:1];
-            //[result setKeepCallbackAsBool:YES];
-            //[self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
         } destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
             return path;
         } completionHandler:^(NSURLResponse * _Nonnull response, NSURL * _Nullable filePath, NSError * _Nullable error) {
+    
+            
+           NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *) response;
+           NSNumber *statusCode = [NSNumber numberWithLong:[httpResponse statusCode]];
+        
+            NSMutableDictionary *res = [[NSMutableDictionary alloc] init];
+            [res setValue:statusCode forKey:@"status"];
+            [res setValue:response != nil? [httpResponse allHeaderFields] : @{} forKey:@"headers"];
+            
+            CDVCommandStatus status;
+            NSString* errorMessage;
+            
             if (error) {
-                NSLog(@"Error: %@", error);
+                 errorMessage = [[NSString alloc] initWithData:(NSData *)error.userInfo[AFNetworkingOperationFailingURLResponseDataErrorKey] encoding:NSUTF8StringEncoding];
+                if (errorMessage == nil || errorMessage.length == 0) {
+                    errorMessage = error.localizedDescription;
+                }
+                [res setValue:errorMessage forKey:@"body"];
+                status = CDVCommandStatus_ERROR;
             } else {
-                NSLog(@"RESPONSE IS %@ %@", response, filePath);
+                status = CDVCommandStatus_OK;
             }
+        
+            CDVPluginResult *result = [CDVPluginResult resultWithStatus:status messageAsDictionary:res];
+            [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
         }];
         
         [downloadTask resume];
@@ -222,14 +239,32 @@
         } error:nil];
         
         NSURLSessionUploadTask *uploadTask = [manager uploadTaskWithStreamedRequest:uploadRequest progress:^(NSProgress * _Nonnull uploadProgress) {
-            
+            NSLog(@"Progress: %@", [uploadProgress localizedDescription]);
         } completionHandler:^(NSURLResponse * _Nonnull response, id  _Nullable responseObject, NSError * _Nullable error) {
-            //CDVPluginResult *result;
+            NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *) response;
+            NSNumber *statusCode = [NSNumber numberWithLong:[httpResponse statusCode]];
+            
+            NSMutableDictionary *res = [[NSMutableDictionary alloc] init];
+            [res setValue:statusCode forKey:@"status"];
+            [res setValue:response != nil? [httpResponse allHeaderFields] : @{} forKey:@"headers"];
+            
+            CDVCommandStatus status;
+            NSString* errorMessage;
+            
             if (error) {
-                NSLog(@"Error: %@", error);
+                errorMessage = [[NSString alloc] initWithData:(NSData *)error.userInfo[AFNetworkingOperationFailingURLResponseDataErrorKey] encoding:NSUTF8StringEncoding];
+                if (errorMessage == nil || errorMessage.length == 0) {
+                    errorMessage = error.localizedDescription;
+                }
+                [res setValue:errorMessage forKey:@"body"];
+                status = CDVCommandStatus_ERROR;
             } else {
-                NSLog(@"RESPONSE IS %@ %@", response, responseObject);
+                [res setValue:responseObject forKey:@"body"];
+                status = CDVCommandStatus_OK;
             }
+            
+            CDVPluginResult *result = [CDVPluginResult resultWithStatus:status messageAsDictionary:res];
+            [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
         }];
         
         [uploadTask resume];
