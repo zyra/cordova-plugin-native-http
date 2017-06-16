@@ -60,6 +60,12 @@ function Cordova(config) {
         };
     };
 }
+function merge(defaults, mergeWith) {
+    for (var prop in mergeWith) {
+        defaults[prop] = mergeWith[prop];
+    }
+    return defaults;
+}
 var SERVICE_NAME = 'NativeHttp';
 var HttpResponse = (function () {
     function HttpResponse(res) {
@@ -111,9 +117,13 @@ var NativeHttp = (function () {
         if (headers === void 0) { headers = {}; }
         this._defaultHeaders = headers;
     };
+    NativeHttp.prototype.setDefaultHeader = function (key, value) {
+        this._defaultHeaders[key] = value;
+    };
     NativeHttp.prototype.acceptAllCerts = function (accept) { return; };
     NativeHttp.prototype.enableSSLPinning = function (enable) { return; };
     NativeHttp.prototype.validateDomainName = function (validate) { return; };
+    NativeHttp.prototype.pinSSL = function (hostname, publicKey) { };
     NativeHttp.prototype.get = function (path, params, headers) { return; };
     NativeHttp.prototype.post = function (path, body, headers, json) {
         if (json === void 0) { json = true; }
@@ -130,6 +140,8 @@ var NativeHttp = (function () {
     NativeHttp.prototype.head = function (path, params, headers) { return; };
     NativeHttp.prototype.delete = function (path, params, headers) { return; };
     NativeHttp.prototype.download = function (remotePath, localPath, params, headers, onProgress) {
+        headers = merge(this._defaultHeaders, headers);
+        params = params || {};
         if (!remotePath) {
             return Promise.reject({ error: 'You must provide a remote path.' });
         }
@@ -155,11 +167,9 @@ var NativeHttp = (function () {
         else if (!localPath) {
             return Promise.reject({ error: 'You must provide a local path.' });
         }
-        for (var prop in DEFAULT_UPLOAD_OPTIONS) {
-            if (!options[prop]) {
-                options[prop] = DEFAULT_UPLOAD_OPTIONS[prop];
-            }
-        }
+        options = merge(DEFAULT_UPLOAD_OPTIONS, options);
+        options.headers = merge(this._defaultHeaders, options.headers);
+        options.params = options.params || {};
         return new Promise(function (resolve, reject) {
             cordova_1.exec(resolve, reject, SERVICE_NAME, 'upload', [remotePath, localPath, options]);
         });

@@ -13,10 +13,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Type;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -60,9 +58,9 @@ public class NativeHttp extends CordovaPlugin {
             headers = jsonToHeaders(args.getJSONObject(2));
             if (action.equals("post") || action.equals("put") || action.equals("patch")) {
                 isJSON = args.getBoolean(3);
-                this.postRequest(action, path, paramsOrBody, headers, isJSON, callbackContext);
+                this.postRequest(action.toUpperCase(), path, paramsOrBody, headers, isJSON, callbackContext);
             } else {
-                this.request(action, path, paramsOrBody, headers, callbackContext);
+                this.request(action.toUpperCase(), path, paramsOrBody, headers, callbackContext);
             }
             return true;
         } else if (action.equals("download") || action.equals("upload")) {
@@ -178,7 +176,7 @@ public class NativeHttp extends CordovaPlugin {
             @Override
             public void run() {
                 try {
-                    final Request request = createRequest("get", remotePath, params, headers);
+                    final Request request = createRequest("GET", remotePath, params, headers);
 
                     Response response = client.newCall(request).execute();
                     JSONObject responseObject = new JSONObject();
@@ -186,7 +184,7 @@ public class NativeHttp extends CordovaPlugin {
                     responseObject.put("status", response.code());
 
                     if (response.isSuccessful()) {
-                        File file = new File(localPath);
+                        File file = new File(URI.create(localPath));
                         BufferedSink bufferedSink = Okio.buffer(Okio.sink(file));
                         bufferedSink.writeAll(response.body().source());
                         bufferedSink.close();
@@ -208,9 +206,19 @@ public class NativeHttp extends CordovaPlugin {
             Headers headers = jsonToHeaders(options.getJSONObject("headers"));
             JSONObject params = options.getJSONObject("params");
 
+            String fileKey = options.getString("fileKey");
+            String fileName = options.getString("fileName");
+            String mimeType = options.getString("mimeType");
+            MediaType mediaType = MediaType.parse(mimeType);
+
+            URI uri = new URI(localPath);
+            File file = new File(uri);
+
+            RequestBody fileBody = RequestBody.create(mediaType, file);
+
             RequestBody requestBody = new MultipartBody.Builder()
                     .setType(MultipartBody.FORM)
-                    .addFormDataPart(options.getString("fileKey"), options.getString("fileName"), RequestBody.create(MediaType.parse(options.getString("mimeType")), new File(localPath)))
+                    .addFormDataPart(fileKey, fileName, fileBody)
                     .build();
 
             final HttpUrl.Builder httpUrlBuilder = HttpUrl.parse(remotePath).newBuilder();

@@ -102,6 +102,13 @@ function Cordova(config?: ICordovaDecoratorConfig) {
     };
 }
 
+function merge(defaults: any, mergeWith: any) {
+    for (let prop in mergeWith) {
+        defaults[prop] = mergeWith[prop];
+    }
+    return defaults;
+}
+
 const SERVICE_NAME: string = 'NativeHttp';
 
 class HttpResponse {
@@ -200,6 +207,9 @@ class NativeHttp {
 
     download(remotePath: string, localPath: string, params?: any, headers?: any, onProgress?: Function): Promise<HttpResponse> {
 
+        headers = merge(this._defaultHeaders, headers);
+        params = params || {};
+
         if (!remotePath) {
             return Promise.reject({ error: 'You must provide a remote path.' });
         } else if(!localPath) {
@@ -229,11 +239,15 @@ class NativeHttp {
             return Promise.reject({ error: 'You must provide a local path.' });
         }
 
-        for (let prop in DEFAULT_UPLOAD_OPTIONS) {
-            if (!options[prop]) {
-                options[prop] = DEFAULT_UPLOAD_OPTIONS[prop];
-            }
-        }
+        options = merge(DEFAULT_UPLOAD_OPTIONS, options);
+        options.headers = merge(this._defaultHeaders, options.headers);
+        options.params = options.params || {};
+
+        // for (let prop in DEFAULT_UPLOAD_OPTIONS) {
+        //     if (!options[prop]) {
+        //         options[prop] = DEFAULT_UPLOAD_OPTIONS[prop];
+        //     }
+        // }
 
         return new Promise<HttpResponse>((resolve, reject) => {
             exec(resolve, reject, SERVICE_NAME, 'upload', [remotePath, localPath, options]);
