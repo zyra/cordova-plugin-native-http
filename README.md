@@ -1,4 +1,8 @@
 # cordova-plugin-native-http
+
+> [!WARNING]
+> This unfinished Cordova plugin is deprecated and no longer maintained. The repository is archived for historical reference; no fixes or support will be provided.
+
 Native HTTP Client for Cordova Apps.
 
 Work in progress. So far it seem to be x2 - x2.5 times faster than XHR/Angular Http on Android, barely any difference on iOS.
